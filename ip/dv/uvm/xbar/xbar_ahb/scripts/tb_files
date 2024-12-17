@@ -1,0 +1,8 @@
++incdir+$(PROJECT_DIR)/env
+$(PROJECT_DIR)/env/xbar_ahb_pkg.sv
+
++incdir+$(PROJECT_DIR)/tests
+$(PROJECT_DIR)/tests/xbar_ahb_test_pkg.sv
+
++incdir+$(PROJECT_DIR)/tb
+$(PROJECT_DIR)/tb/xbar_ahb_tb_top.sv

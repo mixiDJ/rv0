@@ -1,0 +1,135 @@
+window new WaveWindow -name "Waveform"
+waveform using {Waveform}
+
+set id [waveform add -signals  {
+	bridge_ahb_apb_tb_top.ahb_if.hclk
+	} ]
+waveform format $id -color #0099ff
+set id [waveform add -signals  {
+	bridge_ahb_apb_tb_top.ahb_if.hrst_n
+	} ]
+waveform format $id -color #0099ff
+set id [waveform add -signals  {
+	{bridge_ahb_apb_tb_top.ahb_if.haddr[31:0]}
+	} ]
+waveform format $id -color #0099ff
+set id [waveform add -signals  {
+	{bridge_ahb_apb_tb_top.ahb_if.hburst[3:0]}
+	} ]
+waveform format $id -color #0099ff
+set id [waveform add -signals  {
+	bridge_ahb_apb_tb_top.ahb_if.hmastlock
+	} ]
+waveform format $id -color #0099ff
+set id [waveform add -signals  {
+	{bridge_ahb_apb_tb_top.ahb_if.hprot[3:0]}
+	} ]
+waveform format $id -color #0099ff
+set id [waveform add -signals  {
+	{bridge_ahb_apb_tb_top.ahb_if.hsize[2:0]}
+	} ]
+waveform format $id -color #0099ff
+set id [waveform add -signals  {
+	bridge_ahb_apb_tb_top.ahb_if.hnonsec
+	} ]
+waveform format $id -color #0099ff
+set id [waveform add -signals  {
+	bridge_ahb_apb_tb_top.ahb_if.hexcl
+	} ]
+waveform format $id -color #0099ff
+set id [waveform add -signals  {
+	{bridge_ahb_apb_tb_top.ahb_if.hmaster[0:0]}
+	} ]
+waveform format $id -color #0099ff
+set id [waveform add -signals  {
+	{bridge_ahb_apb_tb_top.ahb_if.htrans[1:0]}
+	} ]
+waveform format $id -color #0099ff
+set id [waveform add -signals  {
+	{bridge_ahb_apb_tb_top.ahb_if.hwdata[31:0]}
+	} ]
+waveform format $id -color #0099ff
+set id [waveform add -signals  {
+	{bridge_ahb_apb_tb_top.ahb_if.hwstrb[3:0]}
+	} ]
+waveform format $id -color #0099ff
+set id [waveform add -signals  {
+	bridge_ahb_apb_tb_top.ahb_if.hwrite
+	} ]
+waveform format $id -color #0099ff
+set id [waveform add -signals  {
+	bridge_ahb_apb_tb_top.ahb_if.hsel
+	} ]
+waveform format $id -color #0099ff
+set id [waveform add -signals  {
+	{bridge_ahb_apb_tb_top.ahb_if.hrdata[31:0]}
+	} ]
+waveform format $id -color #0099ff
+set id [waveform add -signals  {
+	bridge_ahb_apb_tb_top.ahb_if.hreadyout
+	} ]
+waveform format $id -color #0099ff
+set id [waveform add -signals  {
+	bridge_ahb_apb_tb_top.ahb_if.hresp
+	} ]
+waveform format $id -color #0099ff
+set id [waveform add -signals  {
+	bridge_ahb_apb_tb_top.ahb_if.hexokay
+	} ]
+waveform format $id -color #0099ff
+set id [waveform add -signals  {
+	bridge_ahb_apb_tb_top.apb_if.pclk
+	} ]
+waveform format $id -color #9900ff
+set id [waveform add -signals  {
+	bridge_ahb_apb_tb_top.apb_if.prst_n
+	} ]
+waveform format $id -color #9900ff
+set id [waveform add -signals  {
+	{bridge_ahb_apb_tb_top.apb_if.paddr[31:0]}
+	} ]
+waveform format $id -color #9900ff
+set id [waveform add -signals  {
+	{bridge_ahb_apb_tb_top.apb_if.pprot[2:0]}
+	} ]
+waveform format $id -color #9900ff
+set id [waveform add -signals  {
+	bridge_ahb_apb_tb_top.apb_if.pnse
+	} ]
+waveform format $id -color #9900ff
+set id [waveform add -signals  {
+	bridge_ahb_apb_tb_top.apb_if.psel
+	} ]
+waveform format $id -color #9900ff
+set id [waveform add -signals  {
+	bridge_ahb_apb_tb_top.apb_if.penable
+	} ]
+waveform format $id -color #9900ff
+set id [waveform add -signals  {
+	bridge_ahb_apb_tb_top.apb_if.pwrite
+	} ]
+waveform format $id -color #9900ff
+set id [waveform add -signals  {
+	{bridge_ahb_apb_tb_top.apb_if.pwdata[31:0]}
+	} ]
+waveform format $id -color #9900ff
+set id [waveform add -signals  {
+	{bridge_ahb_apb_tb_top.apb_if.pstrb[3:0]}
+	} ]
+waveform format $id -color #9900ff
+set id [waveform add -signals  {
+	bridge_ahb_apb_tb_top.apb_if.pready
+	} ]
+waveform format $id -color #9900ff
+set id [waveform add -signals  {
+	{bridge_ahb_apb_tb_top.apb_if.prdata[31:0]}
+	} ]
+waveform format $id -color #9900ff
+set id [waveform add -signals  {
+	bridge_ahb_apb_tb_top.apb_if.pslverr
+	} ]
+waveform format $id -color #9900ff
+set id [waveform add -signals  {
+	bridge_ahb_apb_tb_top.apb_if.pwakeup
+	} ]
+waveform format $id -color #9900ff

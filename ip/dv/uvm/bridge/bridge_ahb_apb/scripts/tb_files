@@ -1,0 +1,8 @@
++incdir+$(PROJECT_DIR)/env
+$(PROJECT_DIR)/env/bridge_ahb_apb_pkg.sv
+
++incdir+$(PROJECT_DIR)/tests
+$(PROJECT_DIR)/tests/bridge_ahb_apb_test_pkg.sv
+
++incdir+$(PROJECT_DIR)/tb
+$(PROJECT_DIR)/tb/bridge_ahb_apb_tb_top.sv

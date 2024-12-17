@@ -1,0 +1,17 @@
+session rv0_core_rv32i_zicsr_m_session {
+    top_dir              : $ENV(WORK_DIR)/regr;
+    max_runs_in_parallel : 5;
+    pre_session_script   : make -f $ENV(PROJECT_DIR)/scripts/Makefile elaborate COMPILEDB=$DIR(chain) ISA_CFG=rv0_core_cfg_rv32i_zicsr_m;
+    post_session_script  : regr_notif -d -n $RUN_ENV(BRUN_NAME);
+    output_mode          : log_only;
+    drm                  : <text>parallel_local</text>;
+};
+
+group rv0_core_rv32i_zicsr_m_group_csr {
+    run_script  : make -f $ENV(PROJECT_DIR)/scripts/Makefile reinvoke COMPILEDB=$DIR(chain) TEST_NAME=$ATTR(test_name) SEED=$RUN_ENV(BRUN_SV_SEED);
+    scan_script : vm_scan.pl shell.flt ius.flt uvm.flt;
+    timeout     : 600;
+
+    test    test_rv0_core_rv32i_insn_lui    { count:     5; seed: random; };
+
+};

@@ -1,0 +1,15 @@
+-defparam rv0_core_tb_top.XLEN=32
+-defparam rv0_core_tb_top.FLEN=32
+-defparam rv0_core_tb_top.RVA=1'b0
+-defparam rv0_core_tb_top.RVC=1'b0
+-defparam rv0_core_tb_top.RVD=1'b0
+-defparam rv0_core_tb_top.RVE=1'b0
+-defparam rv0_core_tb_top.RVF=1'b0
+-defparam rv0_core_tb_top.RVI=1'b1
+-defparam rv0_core_tb_top.RVM=1'b0
+-defparam rv0_core_tb_top.RVS=1'b0
+-defparam rv0_core_tb_top.RVU=1'b0
+-defparam rv0_core_tb_top.ZIFENCEI=1'b0
+-defparam rv0_core_tb_top.ZICSR=1'b0
+-defparam rv0_core_tb_top.ZICNTR=1'b0
+-defparam rv0_core_tb_top.ZICOND=1'b0

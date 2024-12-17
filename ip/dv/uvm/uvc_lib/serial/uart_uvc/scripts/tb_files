@@ -1,0 +1,12 @@
++incdir+$(IP_BASE_DIR)/utils
+
++incdir+$(PROJECT_DIR)/src
+$(PROJECT_DIR)/src/$(PROJECT_NAME)_pkg.sv
+
++incdir+$(PROJECT_DIR)/example/env
+$(PROJECT_DIR)/example/env/$(PROJECT_NAME)_example_pkg.sv
+
++incdir+$(PROJECT_DIR)/example/tests
+$(PROJECT_DIR)/example/tests/$(PROJECT_NAME)_example_test_pkg.sv
+
+$(PROJECT_DIR)/example/tb/$(PROJECT_NAME)_example_tb_top.sv

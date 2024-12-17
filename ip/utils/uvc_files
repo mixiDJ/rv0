@@ -1,0 +1,16 @@
++incdir+$(IP_DIR)/utils/
+
++incdir+$(IP_DIR)/dv/uvm/uvc_lib/sideband/clk_uvc/src/
+$(IP_DIR)/dv/uvm/uvc_lib/sideband/clk_uvc/src/clk_uvc_pkg.sv
+
++incdir+$(IP_DIR)/dv/uvm/uvc_lib/amba/ahb_uvc/src/
+$(IP_DIR)/dv/uvm/uvc_lib/amba/ahb_uvc/src/ahb_uvc_pkg.sv
++incdir+$(IP_DIR)/dv/uvm/uvc_lib/amba/apb_uvc/src/
+$(IP_DIR)/dv/uvm/uvc_lib/amba/apb_uvc/src/apb_uvc_pkg.sv
+
++incdir+$(IP_DIR)/dv/uvm/uvc_lib/rv/rv_uvc/src/
+$(IP_DIR)/dv/uvm/uvc_lib/rv/rv_uvc/src/rv_uvc_pkg.sv
++incdir+$(IP_DIR)/dv/uvm/uvc_lib/rv/rv_layering_uvc/src/
+$(IP_DIR)/dv/uvm/uvc_lib/rv/rv_layering_uvc/src/rv_layering_uvc_pkg.sv
++incdir+$(IP_DIR)/dv/uvm/uvc_lib/rv/rv_iret_uvc/src/
+$(IP_DIR)/dv/uvm/uvc_lib/rv/rv_iret_uvc/src/rv_iret_uvc_pkg.sv

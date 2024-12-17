@@ -1,0 +1,5 @@
+$(BASE_DIR)/rtl/bridge/sbuf_ahb/sbuf_ahb.sv
+
+$(BASE_DIR)/rtl/xbar/xbar_ahb/xbar_ahb_node.sv
+$(BASE_DIR)/rtl/xbar/xbar_ahb/xbar_ahb_arbt.sv
+$(BASE_DIR)/rtl/xbar/xbar_ahb/xbar_ahb_top.sv

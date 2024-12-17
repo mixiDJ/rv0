@@ -1,0 +1,12 @@
++incdir+$(BASE_DIR)/utils
+
++incdir+$(BASE_DIR)/dv/uvm/uvc_lib/$(PROJECT_NAME)/src
+$(BASE_DIR)/dv/uvm/uvc_lib/$(PROJECT_NAME)/src/$(PROJECT_NAME)_pkg.sv
+
++incdir+$(BASE_DIR)/dv/uvm/uvc_lib/$(PROJECT_NAME)/example/env
+$(BASE_DIR)/dv/uvm/uvc_lib/$(PROJECT_NAME)/example/env/$(PROJECT_NAME)_example_pkg.sv
+
++incdir+$(BASE_DIR)/dv/uvm/uvc_lib/$(PROJECT_NAME)/example/tests
+$(BASE_DIR)/dv/uvm/uvc_lib/$(PROJECT_NAME)/example/tests/$(PROJECT_NAME)_example_test_pkg.sv
+
+$(BASE_DIR)/dv/uvm/uvc_lib/$(PROJECT_NAME)/example/tb/$(PROJECT_NAME)_example_tb_top.sv

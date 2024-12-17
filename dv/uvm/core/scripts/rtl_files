@@ -1,0 +1,17 @@
+$(IP_DIR)/rtl/common/fifo/fifo_sync.sv
+
++incdir+$(BASE_DIR)/rtl/core/
+
+$(BASE_DIR)/rtl/core/rv0_core_defs.svh
+
+$(BASE_DIR)/rtl/core/rv0_alu_i.sv
+$(BASE_DIR)/rtl/core/rv0_core.sv
+$(BASE_DIR)/rtl/core/rv0_csr.sv
+$(BASE_DIR)/rtl/core/rv0_ifu.sv
+$(BASE_DIR)/rtl/core/rv0_ipu.sv
+$(BASE_DIR)/rtl/core/rv0_exu.sv
+$(BASE_DIR)/rtl/core/rv0_idu.sv
+$(BASE_DIR)/rtl/core/rv0_lsu.sv
+$(BASE_DIR)/rtl/core/rv0_rf_i.sv
+$(BASE_DIR)/rtl/core/rv0_sbuf.sv
+$(BASE_DIR)/rtl/core/rv0_wbu.sv

@@ -1,0 +1,6 @@
+$(BASE_DIR)/rtl/common/misc/conv_bin_gray.sv
+$(BASE_DIR)/rtl/common/fifo/fifo_async.sv
+$(BASE_DIR)/rtl/common/sync/sync.sv
+$(BASE_DIR)/rtl/common/sync/sync_pulse.sv
+
+$(BASE_DIR)/rtl/bridge/bridge_ahb_apb/bridge_ahb_apb.sv

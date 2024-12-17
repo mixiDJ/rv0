@@ -1,0 +1,24 @@
+session bridge_ahb_apb_regr {
+    top_dir              : $ENV(WORK_DIR)/regr;
+    max_runs_in_parallel : 5;
+    pre_session_script   : make -f $ENV(PROJECT_DIR)/scripts/Makefile elaborate COMPILEDB=$DIR(chain);
+    output_mode          : log_only;
+    drm                  : <text>oge</text>;
+};
+
+group bridge_ahb_apb_tests {
+
+    run_script  : make -f $ENV(PROJECT_DIR)/scripts/Makefile reinvoke COMPILEDB=$DIR(chain) TEST_NAME=$ATTR(test_name) SEED=$RUN_ENV(BRUN_SV_SEED);
+    scan_script : vm_scan.pl shell.flt ius.flt uvm.flt;
+    timeout     : 600;
+
+    test test_bridge_ahb_apb_smoke   { count: 20; seed: random; };
+    test test_bridge_ahb_apb_burst   { count: 20; seed: random; };
+    test test_bridge_ahb_apb_rst     { count: 20; seed: random; };
+    test test_bridge_ahb_apb_sel     { count: 20; seed: random; };
+    test test_bridge_ahb_apb_slverr  { count: 20; seed: random; };
+    test test_bridge_ahb_apb_hexcl   { count: 20; seed: random; };
+    test test_bridge_ahb_apb_hnonsec { count: 20; seed: random; };
+    test test_bridge_ahb_apb_stress  { count: 60; seed: random; };
+
+};

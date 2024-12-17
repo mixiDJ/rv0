@@ -1,0 +1,12 @@
+$(BASE_DIR)/rtl/common/fifo/fifo_sync_sram.sv
+$(BASE_DIR)/rtl/common/sram/sram_sync_dp.sv
+$(BASE_DIR)/rtl/common/sync/sync.sv
+
+$(BASE_DIR)/rtl/serial/uart/uart_common/uart_bclk_gen.sv
+$(BASE_DIR)/rtl/serial/uart/uart_common/uart_rx.sv
+$(BASE_DIR)/rtl/serial/uart/uart_common/uart_tx.sv
+$(BASE_DIR)/rtl/serial/uart/uart_common/uart_fctrl.sv
+
+$(BASE_DIR)/rtl/serial/uart/uart_apb/uart_apb_if.sv
+$(BASE_DIR)/rtl/serial/uart/uart_apb/uart_apb_reg.sv
+$(BASE_DIR)/rtl/serial/uart/uart_apb/uart_apb_top.sv

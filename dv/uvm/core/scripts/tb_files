@@ -1,0 +1,10 @@
++incdir+$(PROJECT_DIR)/uvc_lib/rv_layering_ahb_uvc/src/
+$(PROJECT_DIR)/uvc_lib/rv_layering_ahb_uvc/src/rv_layering_ahb_uvc_pkg.sv
+
++incdir+$(PROJECT_DIR)/env
+$(PROJECT_DIR)/env/rv0_core_pkg.sv
+
++incdir+$(PROJECT_DIR)/tests
+$(PROJECT_DIR)/tests/rv0_core_test_pkg.sv
+
+$(PROJECT_DIR)/tb/rv0_core_tb_top.sv
