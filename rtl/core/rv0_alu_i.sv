@@ -29,14 +29,10 @@
 //
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
-`include "rv0_core_defs.svh"
-
 module rv0_alu_i #(`RV0_CORE_PARAM_LST) (
 
-    input  logic                clk_i,
-    input  logic                rst_ni,
-
     input  logic [31:0]         alu_insn_i,
+    input  logic [XLEN-1:0]     alu_addr_i,
 
     input  logic [XLEN-1:0]     alu_rdata1_i,
     input  logic [XLEN-1:0]     alu_rdata2_i,
@@ -45,136 +41,101 @@ module rv0_alu_i #(`RV0_CORE_PARAM_LST) (
 
 );
 
-    localparam int unsigned SHAMT_WIDTH = XLEN == 64 ? 6 : 5;
+    localparam int unsigned SHAMT_WIDTH_32 = 5;
+    localparam int unsigned SHAMT_WIDTH_64 = 6;
+    localparam int unsigned SHAMT_WIDTH    = XLEN == 64 ? SHAMT_WIDTH_64 : SHAMT_WIDTH_32;
 
-    logic [6:0]             opcode;
+    rv_opcode_e             opcode;
     logic [2:0]             funct3;
     logic [6:0]             funct7;
     logic [SHAMT_WIDTH-1:0] shamt;
+    logic                   mod;
+    logic [XLEN-1:0]        alu_res;
 
-    assign opcode = alu_insn_i[6:0];
+    assign opcode = rv_opcode_e'(alu_insn_i[6:0]);
     assign funct3 = alu_insn_i[14:12];
     assign funct7 = alu_insn_i[31:25];
+    assign mod    = alu_insn_i[30];
 
-    if(XLEN == 64) begin : shamt64_genblk
+    logic unsigned [XLEN-1:0]   rdata1;
+    logic unsigned [XLEN-1:0]   rdata2;
+    logic signed   [XLEN-1:0]   srdata1;
+    logic signed   [XLEN-1:0]   srdata2;
+    logic unsigned [31:0]       rdata1_w;
+    logic unsigned [31:0]       rdata2_w;
+    logic signed   [31:0]       srdata1_w;
+    logic signed   [31:0]       srdata2_w;
+
+    if(XLEN == 64) begin : rdata_xlen64_genblk
+    end // rdata_xlen64_genblk
+
+    if(XLEN == 32) begin : rdata_xlen32_genblk
+
+        assign rdata1  = alu_rdata1_i;
+        assign rdata2  = alu_rdata2_i;
+        assign srdata1 = alu_rdata1_i;
+        assign srdata2 = alu_rdata2_i;
+
+    end // rdata_xlen32_genblk
+
+    if(XLEN == 64) begin : shamt_xlen64_genblk
         // TODO
-    end // shamt64_genblk
-    else begin : shamt32_genblk
-        assign shamt = alu_rdata2_i[SHAMT_WIDTH-1:0];
-    end // shamt32_genblk
+    end // shamt_xlen64_genblk
+
+    if(XLEN == 32) begin : shamt_xlen32_genblk
+        assign shamt = rdata2[SHAMT_WIDTH_32-1:0];
+    end // shamt_xlen32_genblk
 
     always_comb begin
-        alu_wdata_o = {XLEN{1'b0}};
+        alu_res = {XLEN{1'b0}};
 
         case(opcode)
-
+            LUI:   alu_res = {{XLEN-32{alu_insn_i[31]}}, alu_insn_i[31:12], 12'h0};
+            AUIPC: alu_res = {{XLEN-32{alu_insn_i[31]}}, alu_insn_i[31:12], 12'h0} + alu_addr_i;
             OP_IMM: begin
-
                 case(funct3)
-
-                    ADDI: begin
-                        alu_wdata_o = alu_rdata1_i + alu_rdata2_i;
-                    end
-
-                    SLLI: begin
-                        alu_wdata_o = alu_rdata1_i << shamt;
-                    end
-
-                    SLTI: begin
-                        alu_wdata_o = $signed(alu_rdata1_i) < $signed(alu_rdata2_i);
-                    end
-
-                    SLTIU: begin
-                        alu_wdata_o = alu_rdata1_i < alu_rdata2_i;
-                    end
-
-                    XORI: begin
-                       alu_wdata_o = alu_rdata1_i ^ alu_rdata2_i;
-                    end
-
+                    ADDI:  alu_res = rdata1  +  rdata2;
+                    SLLI:  alu_res = rdata1  << shamt;
+                    SLTI:  alu_res = srdata1 <  srdata2;
+                    SLTIU: alu_res = rdata1  <  rdata2;
+                    XORI:  alu_res = rdata1  ^  rdata2;
                     SRLI: begin
-
-                        if(funct7[5]) begin
-                            alu_wdata_o = $signed(alu_rdata1_i) >>> shamt;
-                        end
-                        else begin
-                            alu_wdata_o = alu_rdata1_i >> shamt;
-                        end
-
+                        if(mod == 1'b1) alu_res = srdata1 >>> shamt;
+                        else alu_res = rdata1 >> shamt;
                     end
-
-                    ORI: begin
-                        alu_wdata_o = alu_rdata1_i | alu_rdata2_i;
-                    end
-
-                    ANDI: begin
-                        alu_wdata_o = alu_rdata1_i & alu_rdata2_i;
-                    end
-
+                    ORI:   alu_res = rdata1 | rdata2;
+                    ANDI:  alu_res = rdata1 & rdata2;
                 endcase
-
             end
-
             OP: begin
-
                 case(funct3)
-
-                    ADD: begin
-
-                        if(funct7[5]) begin
-                            alu_wdata_o = alu_rdata1_i - alu_rdata2_i;
-                        end
-                        else begin
-                            alu_wdata_o = alu_rdata1_i + alu_rdata2_i;
-                        end
-
-                    end
-
-                    SLL: begin
-                        alu_wdata_o = alu_rdata1_i << shamt;
-                    end
-
-                    SLT: begin
-                        alu_wdata_o = $signed(alu_rdata1_i) < $signed(alu_rdata2_i);
-                    end
-
-                    SLTU: begin
-                        alu_wdata_o = alu_rdata1_i < alu_rdata2_i;
-                    end
-
-                    XOR: begin
-                        alu_wdata_o = alu_rdata1_i ^ alu_rdata2_i;
-                    end
-
+                    ADD:  alu_res = mod ? rdata1 - rdata2 : rdata1 + rdata2;
+                    SLL:  alu_res = rdata1 << shamt;
+                    SLT:  alu_res = srdata1 < srdata2;
+                    SLTU: alu_res = rdata1 < rdata2;
+                    XOR:  alu_res = rdata1 ^ rdata2;
                     SRL: begin
-
-                        if(funct7[5]) begin
-                            alu_wdata_o = $signed(alu_rdata1_i) >>> shamt;
-                        end
-                        else begin
-                            alu_wdata_o = alu_rdata1_i >> shamt;
-                        end
-
+                        if(mod) alu_res = srdata1 >>> shamt;
+                        else alu_res = rdata1 >> shamt;
                     end
-
-                    OR: begin
-                        alu_wdata_o = alu_rdata1_i | alu_rdata2_i;
-                    end
-
-                    AND: begin
-                        alu_wdata_o = alu_rdata1_i & alu_rdata2_i;
-                    end
-
+                    OR:   alu_res = rdata1 | rdata2;
+                    AND:  alu_res = rdata1 & rdata2;
                 endcase
-
             end
-
-            default: begin
-                alu_wdata_o = alu_rdata1_i + alu_rdata2_i;
-            end
-
+            default: alu_res = rdata1 + rdata2;
         endcase
-
     end
+
+    if(XLEN == 64) begin : alu_wdata_xlen64_genblk
+
+        always_comb begin
+            alu_wdata_o = alu_res;
+        end
+
+    end // alu_wdata_xlen64_genblk
+
+    if(XLEN == 32) begin : alu_wdata_xlen32_genblk
+        assign alu_wdata_o = alu_res;
+    end // alu_wdata_xlen32_genblk
 
 endmodule : rv0_alu_i

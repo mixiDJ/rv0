@@ -29,8 +29,6 @@
 //
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
-`include "rv0_core_defs.svh"
-
 module rv0_sbuf #(
     parameter int unsigned XLEN = 32,
     parameter int unsigned FLEN = 32
@@ -50,6 +48,8 @@ module rv0_sbuf #(
     input  logic [FLEN-1:0]         fdata1_i,
     input  logic [FLEN-1:0]         fdata2_i,
 
+    input  logic [TLEN-1:0]         tags_i,
+
     input  logic                    rdy_i,
     output logic                    ack_o,
 
@@ -57,7 +57,7 @@ module rv0_sbuf #(
 
 );
 
-    localparam int unsigned SBUF_WIDTH = 32 + 3*XLEN + 2*FLEN;
+    localparam int unsigned SBUF_WIDTH = 32 + 3*XLEN + 2*FLEN + TLEN;
 
     logic [SBUF_WIDTH-1:0]  sbuf_d;
     logic [SBUF_WIDTH-1:0]  sbuf_q;
@@ -70,6 +70,7 @@ module rv0_sbuf #(
             sbuf_if.idata2 <= {XLEN{1'b0}};
             sbuf_if.fdata1 <= {XLEN{1'b0}};
             sbuf_if.fdata2 <= {XLEN{1'b0}};
+            sbuf_if.tags   <= {XLEN{1'b0}};
 
             sbuf_if.rdy <= 1'b0;
         end
@@ -82,6 +83,7 @@ module rv0_sbuf #(
                 sbuf_if.idata2 <= idata2_i;
                 sbuf_if.fdata1 <= fdata1_i;
                 sbuf_if.fdata2 <= fdata2_i;
+                sbuf_if.tags   <= tags_i;
             end
 
             sbuf_if.rdy <= rdy_i || (sbuf_if.rdy && !sbuf_if.ack);

@@ -32,44 +32,47 @@
 module rv0_core #(
 
     /* ISA PARAMETERS */
-    parameter  int unsigned         XLEN            = 32,
-    parameter  int unsigned         FLEN            = 32,
-    parameter  bit                  RVA             = 1'b0,
-    parameter  bit                  RVC             = 1'b0,
-    parameter  bit                  RVD             = 1'b0,
-    parameter  bit                  RVE             = 1'b0,
-    parameter  bit                  RVF             = 1'b0,
-    parameter  bit                  RVI             = 1'b1,
-    parameter  bit                  RVM             = 1'b0,
-    parameter  bit                  RVS             = 1'b0,
-    parameter  bit                  RVU             = 1'b0,
-    parameter  bit                  ZIFENCEI        = 1'b0,
-    parameter  bit                  ZICSR           = 1'b0,
-    parameter  bit                  ZICNTR          = 1'b0,
-    parameter  bit                  ZICOND          = 1'b0,
+    parameter  int unsigned         XLEN                    = 32,
+    parameter  int unsigned         FLEN                    = 32,
+    parameter  bit                  RVA                     = 1'b0,
+    parameter  bit                  RVC                     = 1'b0,
+    parameter  bit                  RVD                     = 1'b0,
+    parameter  bit                  RVE                     = 1'b0,
+    parameter  bit                  RVF                     = 1'b0,
+    parameter  bit                  RVI                     = 1'b1,
+    parameter  bit                  RVM                     = 1'b0,
+    parameter  bit                  RVS                     = 1'b0,
+    parameter  bit                  RVU                     = 1'b0,
+    parameter  bit                  ZIFENCEI                = 1'b0,
+    parameter  bit                  ZICSR                   = 1'b0,
+    parameter  bit                  ZICNTR                  = 1'b0,
+    parameter  bit                  ZICOND                  = 1'b0,
 
     /* CORE PARAMETERS */
-    parameter  bit [XLEN-1:0]       PC_RST_VAL      = 'h0010_0000,
+    parameter  bit [XLEN-1:0]       PC_RST_VAL              = 'h0010_0000,
 
-    parameter  bit [XLEN-1:0]       VENDOR_ID       = 'h0,
-    parameter  bit [XLEN-1:0]       ARCH_ID         = 'h0,
-    parameter  bit [XLEN-1:0]       IMP_ID          = 'h0,
-    parameter  bit [XLEN-1:0]       HART_ID         = 'h0,
+    parameter  bit [XLEN-1:0]       VENDOR_ID               = 'h0,
+    parameter  bit [XLEN-1:0]       ARCH_ID                 = 'h0,
+    parameter  bit [XLEN-1:0]       IMP_ID                  = 'h0,
+    parameter  bit [XLEN-1:0]       HART_ID                 = 'h0,
 
-    parameter  bit                  ROB_ENA         = 1'b0,  // enable reorder buffer
-    parameter  bit                  MMU_ENA         = 1'b0,  // enable memory management unit
-    parameter  bit                  PMP_ENA         = 1'b0,  // enable physical memory protection
+    parameter  bit                  ROB_ENA                 = 1'b0,  // enable reorder buffer
+    parameter  bit                  MMU_ENA                 = 1'b0,  // enable memory management unit
+    parameter  bit                  PMP_ENA                 = 1'b0,  // enable physical memory protection
+
+    parameter  int unsigned         EXU_CNT                 = 2,
+    parameter  exu_type_e           EXU_TYPE [0:EXU_CNT-1]  = {EXU_IB, LSU},
 
     /* AHB INTERFACE PARAMETERS */
-    parameter  int unsigned         ADDR_WIDTH      = 32,
-    parameter  int unsigned         DATA_WIDTH      = 32,
-    parameter  int unsigned         HBURST_WIDTH    = 0,
-    parameter  int unsigned         HPROT_WIDTH     = 4,
-    parameter  int unsigned         HMASTER_WIDTH   = 1,
-    parameter  int unsigned         USER_REQ_WIDTH  = 0,
-    parameter  int unsigned         USER_DATA_WIDTH = 0,
-    parameter  int unsigned         USER_RESP_WIDTH = 0,
-    localparam int unsigned         STRB_WIDTH      = DATA_WIDTH/8
+    parameter  int unsigned         ADDR_WIDTH              = XLEN,
+    parameter  int unsigned         DATA_WIDTH              = XLEN,
+    parameter  int unsigned         HBURST_WIDTH            = 0,
+    parameter  int unsigned         HPROT_WIDTH             = 4,
+    parameter  int unsigned         HMASTER_WIDTH           = 1,
+    parameter  int unsigned         USER_REQ_WIDTH          = 0,
+    parameter  int unsigned         USER_DATA_WIDTH         = 0,
+    parameter  int unsigned         USER_RESP_WIDTH         = 0,
+    localparam int unsigned         STRB_WIDTH              = DATA_WIDTH/8
 
 ) (
 
@@ -78,6 +81,7 @@ module rv0_core #(
 
     // instruction memory interface
     ahb_if.requester                imem_if,
+
     // data memory interface
     ahb_if.requester                dmem_if
 
@@ -85,30 +89,29 @@ module rv0_core #(
 
     rv_sbuf_if #(XLEN, FLEN) ifu_sbuf_if ();
     rv_sbuf_if #(XLEN, FLEN) ipu_sbuf_if ();
-    rv_sbuf_if #(XLEN, FLEN) idu_ei_sbuf_if ();
-    rv_sbuf_if #(XLEN, FLEN) idu_em_sbuf_if ();
-    rv_sbuf_if #(XLEN, FLEN) idu_ef_sbuf_if ();
-    rv_sbuf_if #(XLEN, FLEN) idu_ma_sbuf_if ();
-    rv_sbuf_if #(XLEN, FLEN) exu_sbuf_if ();
-    rv_sbuf_if #(XLEN, FLEN) lsu_sbuf_if ();
+    rv_sbuf_if #(XLEN, FLEN) idu_sbuf_if [0:EXU_CNT-1] ();
+    rv_sbuf_if #(XLEN, FLEN) exu_sbuf_if [0:EXU_CNT-1] ();
     rv_sbuf_if #(XLEN, FLEN) wbu_sbuf_if ();
 
-    logic [4:0]                 rfi_waddr;
-    logic [XLEN-1:0]            rfi_wdata;
-    logic                       rfi_we;
+    rv_rwb_if #(
+        .ADDR_WIDTH(5       ),
+        .DATA_WIDTH(XLEN    )
+    ) rfi_if ();
 
-    logic [4:0]                 rff_waddr;
-    logic [FLEN-1:0]            rff_wdata;
-    logic                       rff_we;
+    rv_rwb_if #(
+        .ADDR_WIDTH(5       ),
+        .DATA_WIDTH(FLEN    )
+    ) rff_if ();
 
-    logic [XLEN-1:0]            ifu_fc_target;
-    logic                       ifu_fc_trans;
-    logic [XLEN-1:0]            ifu_trap_target;
-    logic                       ifu_trap_trans;
+    // control transfer signals
+    logic [XLEN-1:0]            ct_target;
+    logic                       ct_trans;
 
+    // pipeline flush signals
     logic                       ifu_flush;
     logic                       ipu_flush;
     logic                       idu_flush;
+    logic                       exu_flush;
 
     /*
      * INSTRUCTION FETCH UNIT
@@ -117,8 +120,8 @@ module rv0_core #(
     rv0_ifu #(`RV0_CORE_PARAMS)
     u_ifu (
         .ifu_flush_i        (ifu_flush          ),
-        .ifu_fc_target_i    (ifu_fc_target      ),
-        .ifu_fc_trans_i     (ifu_fc_trans       ),
+        .ct_target_i        (ct_target          ),
+        .ct_trans_i         (ct_trans           ),
         .*
     );
 
@@ -139,28 +142,84 @@ module rv0_core #(
     rv0_idu #(`RV0_CORE_PARAMS)
     u_idu (
         .idu_flush_i        (idu_flush          ),
-
-        .rfi_waddr_i        (rfi_waddr          ),
-        .rfi_wdata_i        (rfi_wdata          ),
-        .rfi_we_i           (rfi_we             ),
-
-        .rff_waddr_i        (rff_waddr          ),
-        .rff_wdata_i        (rff_wdata          ),
-        .rff_we_i           (rff_we             ),
-
         .*
     );
 
     /*
-     * INSTRUCTION EXECUTE UNIT
+     * EXECUTION UNITS
      */
 
-    rv0_exu #(`RV0_CORE_PARAMS)
-    u_exu (
-        .ifu_fc_target_o    (ifu_fc_target      ),
-        .ifu_fc_trans_o     (ifu_fc_trans       ),
-        .*
-    );
+    for(genvar i = 0; i < EXU_CNT; ++i) begin : exu_genblk
+
+        case(EXU_TYPE[i])
+
+            EXU_I: begin : exu_i_genblk
+                rv0_exu_i #(`RV0_CORE_PARAMS)
+                u_exu_i (
+                    .exu_flush_i    (exu_flush      ),
+                    .idu_sbuf_if    (idu_sbuf_if[i] ),
+                    .exu_sbuf_if    (exu_sbuf_if[i] ),
+                    .*
+                );
+            end // exu_i_genblk
+
+            EXU_B: begin : exu_b_genblk
+                rv0_exu_b #(`RV0_CORE_PARAMS)
+                u_exu_b (
+                    .exu_flush_i    (exu_flush      ),
+                    .idu_sbuf_if    (idu_sbuf_if[i] ),
+                    .exu_sbuf_if    (exu_sbuf_if[i] ),
+                    .*
+                );
+            end // exu_b_genblk
+
+            EXU_IB: begin : exu_ib_genblk
+                rv0_exu_ib #(`RV0_CORE_PARAMS)
+                u_exu_ib (
+                    .exu_flush_i    (exu_flush      ),
+                    .idu_sbuf_if    (idu_sbuf_if[i] ),
+                    .exu_sbuf_if    (exu_sbuf_if[i] ),
+                    .*
+                );
+            end // exu_ib_genblk
+
+            EXU_M: begin : exu_m_genblk
+                //rv0_exu_m #(`RV0_CORE_PARAMS)
+                //u_exu_m (
+                //    .idu_sbuf_if    (idu_sbuf_if[i] ),
+                //    .exu_sbuf_if    (exu_sbuf_if[i] ),
+                //    .*
+                //);
+            end // exu_m_genblk
+
+            EXU_F: begin : exu_f_genblk
+                //rv0_exu_f #(`RV0_CORE_PARAMS)
+                //u_exu_f (
+                //    .idu_sbuf_if    (idu_sbuf_if[i] ),
+                //    .exu_sbuf_if    (exu_sbuf_if[i] ),
+                //    .*
+                //);
+            end // exu_f_genblk
+
+            LSU: begin : lsu_genblk
+                rv0_lsu #(`RV0_CORE_PARAMS)
+                u_lsu (
+                    .exu_flush_i    (exu_flush      ),
+                    .idu_sbuf_if    (idu_sbuf_if[i] ),
+                    .exu_sbuf_if    (exu_sbuf_if[i] ),
+                    .*
+                );
+            end // lsu_genblk
+
+            CSU: begin
+                //rv0_csu #(`RV0_CORE_PARAMS)
+                //u_csu (
+                //);
+            end
+
+        endcase
+
+    end // exu_genblk
 
     /*
      * INSTRUCTION WRITE-BACK UNIT
@@ -168,32 +227,18 @@ module rv0_core #(
 
     rv0_wbu #(`RV0_CORE_PARAMS)
     u_wbu (
-        .rfi_waddr_o        (rfi_waddr          ),
-        .rfi_wdata_o        (rfi_wdata          ),
-        .rfi_we_o           (rfi_we             ),
+        .ct_trans_o     (ct_trans   ),
+        .ct_target_o    (ct_target  ),
         .*
     );
-
-    /*
-     * LOAD STORE UNIT
-     */
-
-    rv0_lsu #(`RV0_CORE_PARAMS)
-    u_lsu (.*);
-
-    /*
-     * CONTROL & STATUS REGISTERS
-     */
-
-    rv0_csr #(`RV0_CORE_PARAMS)
-    u_csr (.*);
 
     /*
      * FRONT-END FLUSH LOGIC
      */
 
-    assign ifu_flush = ifu_fc_trans == 1'b1;
-    assign ipu_flush = ifu_fc_trans == 1'b1;
-    assign idu_flush = ifu_fc_trans == 1'b1;
+    assign ifu_flush = ct_trans == 1'b1;
+    assign ipu_flush = ct_trans == 1'b1;
+    assign idu_flush = ct_trans == 1'b1;
+    assign exu_flush = ct_trans == 1'b1;
 
 endmodule : rv0_core

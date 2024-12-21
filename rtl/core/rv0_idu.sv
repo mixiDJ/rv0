@@ -37,67 +37,55 @@ module rv0_idu #(`RV0_CORE_PARAM_LST) (
     // instruction decode unit flush
     input  logic                        idu_flush_i,
 
-    // integer register write-back signals
-    input  logic [4:0]                  rfi_waddr_i,
-    input  logic [XLEN-1:0]             rfi_wdata_i,
-    input  logic                        rfi_we_i,
+    // integer register write-back interface
+    rv_rwb_if.sink                      rfi_if,
 
     // floating point register write-back signals
-    input  logic [4:0]                  rff_waddr_i,
-    input  logic [FLEN-1:0]             rff_wdata_i,
-    input  logic                        rff_we_i,
+    rv_rwb_if.sink                      rff_if,
 
     // pipeline buffer interfaces
     rv_sbuf_if.sink                     ipu_sbuf_if,
-    rv_sbuf_if.source                   idu_ei_sbuf_if,
-    rv_sbuf_if.source                   idu_em_sbuf_if,
-    rv_sbuf_if.source                   idu_ef_sbuf_if,
-    rv_sbuf_if.source                   idu_ma_sbuf_if
+    rv_sbuf_if.source                   idu_sbuf_if [0:EXU_CNT-1]
 
 );
 
     localparam int unsigned REG_CNT = RVI ? 32 : 16;
 
-    logic [31:0]        ei_sbuf_insn;
-    logic [XLEN-1:0]    ei_sbuf_addr;
-    logic [XLEN-1:0]    ei_sbuf_idata1;
-    logic [XLEN-1:0]    ei_sbuf_idata2;
-    logic               ei_sbuf_rdy;
-    logic               ei_sbuf_ack;
+    logic [6:0] opcode;
+    logic [6:0] funct7;
 
-    logic [31:0]        ma_sbuf_insn;
-    logic [XLEN-1:0]    ma_sbuf_addr;
-    logic [XLEN-1:0]    ma_sbuf_idata1;
-    logic [XLEN-1:0]    ma_sbuf_idata2;
-    logic               ma_sbuf_rdy;
-    logic               ma_sbuf_ack;
+    assign opcode = ipu_sbuf_if.insn[6:0];
+    assign funct7 = ipu_sbuf_if.insn[31:25];
 
     /*
      * EXECUTION UNIT RESERVATION LOGIC
      */
 
-    typedef enum logic [3:0] {
-        EX_I  = 4'b0001,
-        EX_M  = 4'b0010,
-        EX_F  = 4'b0100,
-        EX_MA = 4'b1000
-    } ures_e;
-
-    ures_e ures;
+    exu_type_e r_exu;
 
     always_comb begin
-        case(ipu_sbuf_if.opcode)
-            LUI:        ures = EX_I;
-            AUIPC:      ures = EX_I;
-            JAL:        ures = EX_I;
-            JALR:       ures = EX_I;
-            BRANCH:     ures = EX_I;
-            LOAD:       ures = EX_MA;
-            STORE:      ures = EX_MA;
-            OP_IMM:     ures = EX_I;
-            OP:         ures = EX_I;
-            OP_IMM_32:  ures = EX_I;
-            OP_32:      ures = EX_I;
+        case(opcode)
+            LUI:    r_exu = EXU_I;
+            AUIPC:  r_exu = EXU_I;
+            JAL:    r_exu = EXU_B;
+            JALR:   r_exu = EXU_B;
+            BRANCH: r_exu = EXU_B;
+            LOAD:   r_exu = LSU;
+            STORE:  r_exu = LSU;
+            OP_IMM: r_exu = EXU_I;
+            OP: begin
+                r_exu = EXU_I;
+                if(funct7 == MULDIV && RVM == 1'b1) begin
+                    r_exu = EXU_M;
+                end
+            end
+            OP_IMM_32: begin
+                r_exu = EXU_I;
+            end
+            OP_32: begin
+                r_exu = EXU_I;
+            end
+            default: r_exu = EXU_I;
         endcase
     end
 
@@ -105,79 +93,76 @@ module rv0_idu #(`RV0_CORE_PARAM_LST) (
      * REGISTER RESERVATION LOGIC
      */
 
-    logic [5:0] rres;
+    // bit 0 - int rd  reservation
+    // bit 1 - int rs1 reservation
+    // bit 2 - int rs2 reservation
+    // bit 3 - fp  rd  reservation
+    // bit 4 - fp  rs1 reservation
+    // bit 5 - fp  rs2 reservation
+
+    logic [5:0] r_reg;
 
     always_comb begin
-        logic [6:0] opcode;
-        case(ures)
-            EX_I:  opcode = idu_ei_sbuf_if.opcode;
-            EX_MA: opcode = idu_ma_sbuf_if.opcode;
-        endcase
         case(opcode)
-            LUI:        rres = 6'b000_001;
-            AUIPC:      rres = 6'b000_001;
-            JAL:        rres = 6'b000_001;
-            JALR:       rres = 6'b000_011;
-            BRANCH:     rres = 6'b000_110;
-            LOAD:       rres = 6'b000_011;
-            STORE:      rres = 6'b000_110;
-            OP_IMM:     rres = 6'b000_011;
-            OP:         rres = 6'b000_111;
-            OP_IMM_32:  rres = 6'b000_011;
-            OP_32:      rres = 6'b000_111;
-            // TODO
-            LOAD_FP:    rres = 6'bxxx_xxx;
-            STORE_FP:   rres = 6'bxxx_xxx;
-            MADD:       rres = 6'bxxx_xxx;
-            MSUB:       rres = 6'bxxx_xxx;
-            NMSUB:      rres = 6'bxxx_xxx;
-            NMADD:      rres = 6'bxxx_xxx;
-            OP_FP:      rres = 6'bxxx_xxx;
-            AMO:        rres = 6'bxxx_xxx;
-            MISC_MEM:   rres = 6'bxxx_xxx;
-            SYSTEM:     rres = 6'bxxx_xxx;
-            default:    rres = 6'bxxx_xxx;
+            LUI:        r_reg = 6'b000_001;
+            AUIPC:      r_reg = 6'b000_001;
+            JAL:        r_reg = 6'b000_001;
+            JALR:       r_reg = 6'b000_011;
+            BRANCH:     r_reg = 6'b000_110;
+            LOAD:       r_reg = 6'b000_011;
+            STORE:      r_reg = 6'b000_110;
+            OP_IMM:     r_reg = 6'b000_011;
+            OP:         r_reg = 6'b000_111;
+            OP_IMM_32:  r_reg = 6'b000_011;
+            OP_32:      r_reg = 6'b000_111;
+            default:    r_reg = 6'b000_000;
         endcase
     end
 
     /*
-     * INTEGER REGISTER RESERVATION LOGIC
+     * INTEGER REGISTER RESERVATION COUNT LOGIC
      */
 
-    logic [3:0] ires_cnt_q [1:REG_CNT-1];
-    logic [3:0] ires_cnt_d [1:REG_CNT-1];
+    logic [7:0] ireg_res_cnt_q [1:REG_CNT-1];
+    logic [7:0] ireg_res_cnt_d [1:REG_CNT-1];
 
     for(genvar i = 1; i < REG_CNT; ++i) begin
 
         always_comb begin
-            ires_cnt_d[i] = ires_cnt_q[i];
-
-            if(rres[0] == 1'b1 && idu_ei_sbuf_if.rd == i && idu_ei_sbuf_if.rdy == 1'b1 && idu_ei_sbuf_if.ack == 1'b1) begin
-                ires_cnt_d[i] = ires_cnt_d[i] + 4'h1;
+            ireg_res_cnt_d[i] = ireg_res_cnt_q[i];
+            if(r_reg[0] == 1'b1 && ipu_sbuf_if.rd == i && ipu_sbuf_if.rdy == 1'b1 && ipu_sbuf_if.ack == 1'b1) begin
+                ireg_res_cnt_d[i] = ireg_res_cnt_d[i] + 8'h1;
             end
-
-            if(rres[0] == 1'b1 && idu_ma_sbuf_if.rd == i && idu_ma_sbuf_if.rdy == 1'b1 && idu_ma_sbuf_if.ack == 1'b1) begin
-                ires_cnt_d[i] = ires_cnt_d[i] + 4'h1;
+            if(rfi_if.waddr == i && rfi_if.we == 1'b1) begin
+                ireg_res_cnt_d[i] = ireg_res_cnt_d[i] - 8'h1;
             end
-
-            if(rfi_waddr_i == i && rfi_we_i == 1'b1) begin
-                ires_cnt_d[i] = ires_cnt_d[i] - 4'h1;
+            if(idu_flush_i == 1'b1) begin
+                ireg_res_cnt_d[i] = 8'h0;
             end
         end
 
         always_ff @(posedge clk_i or negedge rst_ni) begin
-            if(rst_ni == 1'b0) ires_cnt_q[i] <= 4'h0;
-            else ires_cnt_q[i] <= ires_cnt_d[i];
+            if(rst_ni == 1'b0) ireg_res_cnt_q[i] <= 8'h0;
+            else ireg_res_cnt_q[i] <= ireg_res_cnt_d[i];
         end
 
     end
+
+    /*
+     * FLOATING-POINT REGISTER RESERVATION COUNT LOGIC
+     */
+
+    logic [7:0] freg_res_cnt_q [0:31];
+    logic [7:0] freg_res_cnt_d [0:31];
+
+    // TODO
 
     /*
      * INTEGER REGISTER FILE
      */
 
-    logic [XLEN-1:0]    rfi_rdata1;
-    logic [XLEN-1:0]    rfi_rdata2;
+    logic [XLEN-1:0] rfi_rdata1;
+    logic [XLEN-1:0] rfi_rdata2;
 
     rv0_rf_i #(`RV0_CORE_PARAMS)
     u_rfi (
@@ -190,233 +175,131 @@ module rv0_idu #(`RV0_CORE_PARAM_LST) (
         .raddr2_i           (ipu_sbuf_if.rs2    ),
         .rdata2_o           (rfi_rdata2         ),
 
-        .waddr_i            (rfi_waddr_i        ),
-        .wdata_i            (rfi_wdata_i        ),
-        .we_i               (rfi_we_i           )
+        .waddr_i            (rfi_if.waddr       ),
+        .wdata_i            (rfi_if.wdata       ),
+        .we_i               (rfi_if.we          )
     );
 
-if(RVF == 1'b1) begin : rff_genblk
-
     /*
-     * FLOATING POINT REGISTER RESERVATION LOGIC
+     * INTEGER IMMEDIATE LOGIC
      */
 
-    logic [3:0] fres_cnt_q [0:31];
+    logic [XLEN-1:0] imm;
+
+    always_comb begin
+        case(opcode)
+            LUI:    imm = {{XLEN-32{ipu_sbuf_if.insn[31]}}, ipu_sbuf_if.insn[31:12], 12'h0};
+            AUIPC:  imm = {{XLEN-32{ipu_sbuf_if.insn[31]}}, ipu_sbuf_if.insn[31:12], 12'h0};
+            OP_IMM: imm = {{XLEN-12{ipu_sbuf_if.insn[31]}}, ipu_sbuf_if.insn[31:20]};
+        endcase
+    end
+
+    logic [XLEN-1:0] irdata1;
+    logic [XLEN-1:0] irdata2;
+
+    assign irdata1 = r_reg[1] ? rfi_rdata1 : 'h0;
+    assign irdata2 = r_reg[2] ? rfi_rdata2 : imm;
 
     /*
      * FLOATING POINT REGISTER FILE
      */
 
-    rv0_rf_f #()
-    u_rff ();
+    logic [FLEN-1:0] rff_rdata1;
+    logic [FLEN-1:0] rff_rdata2;
 
-end // rff_genblk
+    if(RVF == 1'b1) begin : rff_genblk
 
-    /*
-     * IMMEDIATE VALUE MUX
-     */
+        rv0_rf_f #(`RV0_CORE_PARAMS)
+        u_rff (
+            .clk_i              (clk_i              ),
+            .rst_ni             (rst_ni             ),
 
-    logic [XLEN-1:0] imm;
+            .raddr1_i           (ipu_sbuf_if.rs1    ),
+            .rdata1_o           (rff_rdata1         ),
 
-    always_comb begin : imm_mux_blk
-        imm = {XLEN{1'b0}};
-        case(ipu_sbuf_if.opcode)
-            LUI:    imm = {{XLEN-32{ipu_sbuf_if.insn[31]}}, ipu_sbuf_if.insn[31:12], 12'h0};
-            AUIPC:  imm = {{XLEN-32{ipu_sbuf_if.insn[31]}}, ipu_sbuf_if.insn[31:12], 12'h0};
-            JAL:    imm = {{XLEN-21{ipu_sbuf_if.insn[31]}}, ipu_sbuf_if.insn[31], ipu_sbuf_if.insn[19:12], ipu_sbuf_if.insn[20], ipu_sbuf_if.insn[30:21], 1'b0};
-            JALR:   imm = 0;
-            BRANCH: imm = {{XLEN-13{ipu_sbuf_if.insn[31]}}, ipu_sbuf_if.insn[7], ipu_sbuf_if.insn[30:25], ipu_sbuf_if.insn[11:8], 1'b0};
-            LOAD:   imm = {{XLEN-12{ipu_sbuf_if.insn[31]}}, ipu_sbuf_if.insn[31:20]};
-            STORE:  imm = {{XLEN-12{ipu_sbuf_if.insn[31]}}, ipu_sbuf_if.insn[31:25], ipu_sbuf_if.insn[11:7]};
-            OP_IMM: imm = {{XLEN-12{ipu_sbuf_if.insn[31]}}, ipu_sbuf_if.insn[31:20]};
-        endcase
-    end // imm_mux_blk
+            .raddr2_i           (ipu_sbuf_if.rs2    ),
+            .rdata2_o           (rff_rdata2         ),
+
+            .waddr_i            (rff_if.waddr       ),
+            .wdata_i            (rff_if.wdata       ),
+            .we_i               (rff_if.we          )
+        );
+
+    end // rff_genblk
 
     /*
-     * INTEGER OPERAND VALUE MUX
+     * EXECUTION UNIT SKID BUFFERS
      */
 
-    logic [1:0] s_op_mux;
+    logic idu_sbuf_rdy [0:EXU_CNT-1];
+    logic idu_sbuf_ack [0:EXU_CNT-1];
+
+    for(genvar i = 0; i < EXU_CNT; ++i) begin : idu_sbuf_genblk
+
+        rv0_sbuf #(XLEN, FLEN)
+        u_idu_sbuf (
+            .clk_i      (clk_i              ),
+            .rst_ni     (rst_ni             ),
+            .flush_i    (idu_flush_i        ),
+
+            .addr_i     (ipu_sbuf_if.addr   ),
+            .insn_i     (ipu_sbuf_if.insn   ),
+            .idata1_i   (irdata1            ),
+            .idata2_i   (irdata2            ),
+            .fdata1_i   (rff_rdata1         ),
+            .fdata2_i   (rff_rdata2         ),
+            .tags_i     (                   ),
+
+            .rdy_i      (idu_sbuf_rdy[i]    ),
+            .ack_o      (idu_sbuf_ack[i]    ),
+
+            .sbuf_if    (idu_sbuf_if[i]     )
+        );
+
+    end // idu_sbuf_genblk
+
+    int idx_cur;
+    int idx;
+    bit iss;
 
     always_comb begin
-        unique case(ipu_sbuf_if.opcode)
-            LUI:        s_op_mux = 6'b00;
-            AUIPC:      s_op_mux = 6'b00;
-            JAL:        s_op_mux = 6'b00;
-            JALR:       s_op_mux = 6'b01;
-            BRANCH:     s_op_mux = 6'b11;
-            LOAD:       s_op_mux = 6'b01;
-            STORE:      s_op_mux = 6'b11;
-            OP_IMM:     s_op_mux = 6'b01;
-            OP:         s_op_mux = 6'b11;
-            OP_IMM_32:  s_op_mux = 6'b01;
-            OP_32:      s_op_mux = 6'b11;
-            // TODO
-            LOAD_FP:    s_op_mux = 6'bxx;
-            STORE_FP:   s_op_mux = 6'bxx;
-            MADD:       s_op_mux = 6'bxx;
-            MSUB:       s_op_mux = 6'bxx;
-            NMSUB:      s_op_mux = 6'bxx;
-            NMADD:      s_op_mux = 6'bxx;
-            OP_FP:      s_op_mux = 6'bxx;
-            AMO:        s_op_mux = 6'bxx;
-            MISC_MEM:   s_op_mux = 6'bxx;
-            SYSTEM:     s_op_mux = 6'bxx;
-            default:    s_op_mux = 6'bxx;
-        endcase
-    end
+        idx_cur = 0;
+        iss = 1'b0;
+        for(int i = 0; i < EXU_CNT; ++i) begin
+            if((r_exu & EXU_TYPE[i]) != 'b0) begin
+                idx_cur = i;
+                iss = 1'b1;
+            end
 
-    logic [XLEN-1:0] i_rdata1;
-    logic [XLEN-1:0] i_rdata2;
+            if(ireg_res_cnt_q[ipu_sbuf_if.rs1] != 8'h0 && r_reg[1] == 1'b1) begin
+                idx_cur = idx;
+                iss = 1'b0;
+            end
 
-    assign i_rdata1 = s_op_mux[0] == 1'b1 ? rfi_rdata1 : ipu_sbuf_if.addr;
-    assign i_rdata2 = s_op_mux[1] == 1'b1 ? rfi_rdata2 : imm;
+            if(ireg_res_cnt_q[ipu_sbuf_if.rs2] != 8'h0 && r_reg[2] == 1'b1) begin
+                idx_cur = idx;
+                iss = 1'b0;
+            end
 
-    /*
-     * INTEGER EXECUTION UNIT SKID BUFER LOGIC
-     */
-
-    assign ei_sbuf_insn   = ipu_sbuf_if.insn;
-    assign ei_sbuf_addr   = ipu_sbuf_if.addr;
-    assign ei_sbuf_idata1 = i_rdata1;
-    assign ei_sbuf_idata2 = i_rdata2;
-
-    always_comb begin
-        ei_sbuf_rdy = ures == EX_I && ipu_sbuf_if.rdy == 1'b1;
-
-        // reservation count
-        if(ires_cnt_q[ipu_sbuf_if.rs1] != 5'h0 && rres[1] == 1'b1) begin
-            ei_sbuf_rdy = 1'b0;
-        end
-
-        if(ires_cnt_q[ipu_sbuf_if.rs2] != 5'h0 && rres[2] == 1'b1) begin
-            ei_sbuf_rdy = 1'b0;
-        end
-
-        // current instruction rd
-        if(idu_ei_sbuf_if.rd == ipu_sbuf_if.rs1 && rres[1] == 1'b1 && idu_ei_sbuf_if.rdy == 1'b1) begin
-            ei_sbuf_rdy = 1'b0;
-        end
-
-        if(idu_ma_sbuf_if.rd == ipu_sbuf_if.rs1 && rres[1] == 1'b1 && idu_ma_sbuf_if.rdy == 1'b1) begin
-            ei_sbuf_rdy = 1'b0;
-        end
-
-        if(idu_ei_sbuf_if.rd == ipu_sbuf_if.rs2 && rres[2] == 1'b1 && idu_ei_sbuf_if.rdy == 1'b1) begin
-            ei_sbuf_rdy = 1'b0;
-        end
-
-        if(idu_ma_sbuf_if.rd == ipu_sbuf_if.rs2 && rres[2] == 1'b1 && idu_ma_sbuf_if.rdy == 1'b1) begin
-            ei_sbuf_rdy = 1'b0;
+            idx = idx_cur;
         end
     end
 
-    rv0_sbuf #(XLEN, FLEN)
-    u_ei_sbuf (
-        .clk_i      (clk_i              ),
-        .rst_ni     (rst_ni             ),
-        .flush_i    (idu_flush_i        ),
-
-        .insn_i     (ei_sbuf_insn       ),
-        .addr_i     (ei_sbuf_addr       ),
-        .idata1_i   (ei_sbuf_idata1     ),
-        .idata2_i   (ei_sbuf_idata2     ),
-        .rdy_i      (ei_sbuf_rdy        ),
-        .ack_o      (ei_sbuf_ack        ),
-
-        .sbuf_if    (idu_ei_sbuf_if     )
-    );
-
-if(RVM == 1'b1) begin : imsbuf_genblk
-
-    /*
-     * INTEGER MULTIPLY EXECUTION UNIT SKID BUFFER LOGIC
-     */
-
-end // imsbuf_genblk
-
-if(RVF == 1'b1) begin : fsbuf_genblk
-
-    /*
-     * FLOATING POINT EXECUTION UNIT SKID BUFFER LOGIC
-     */
-
-end // fsbuf_genblk
-
-    /*
-     * MEMORY ACCESS EXECUTION UNIT SKID BUFFER LOGIC
-     */
-
-    assign ma_sbuf_insn   = ipu_sbuf_if.insn;
-    assign ma_sbuf_addr   = ipu_sbuf_if.addr;
-    assign ma_sbuf_idata1 = i_rdata1;
-    assign ma_sbuf_idata2 = i_rdata2;
-
     always_comb begin
-        ma_sbuf_rdy = ures == EX_MA && ipu_sbuf_if.rdy == 1'b1;
-
-        if(ires_cnt_q[ipu_sbuf_if.rs1] != 5'h0 && rres[1] == 1'b1) begin
-            ma_sbuf_rdy = 1'b0;
-        end
-
-        if(ires_cnt_q[ipu_sbuf_if.rs2] != 5'h0 && rres[2] == 1'b1) begin
-            ma_sbuf_rdy = 1'b0;
-        end
-
-        if(idu_ei_sbuf_if.rd == ipu_sbuf_if.rs1 && rres[1] == 1'b1 && idu_ei_sbuf_if.rdy == 1'b1) begin
-            ma_sbuf_rdy = 1'b0;
-        end
-
-        if(idu_ma_sbuf_if.rd == ipu_sbuf_if.rs1 && rres[1] == 1'b1 && idu_ma_sbuf_if.rdy == 1'b1) begin
-            ma_sbuf_rdy = 1'b0;
-        end
-
-        if(idu_ei_sbuf_if.rd == ipu_sbuf_if.rs2 && rres[2] == 1'b1 && idu_ei_sbuf_if.rdy == 1'b1) begin
-            ma_sbuf_rdy = 1'b0;
-        end
-
-        if(idu_ma_sbuf_if.rd == ipu_sbuf_if.rs2 && rres[2] == 1'b1 && idu_ma_sbuf_if.rdy == 1'b1) begin
-            ma_sbuf_rdy = 1'b0;
+        idu_sbuf_rdy = '{default: 1'b0};
+        if(ipu_sbuf_if.rdy == 1'b1 && iss == 1'b1) begin
+            idu_sbuf_rdy[idx] = 1'b1;
         end
     end
 
-    rv0_sbuf #(XLEN, FLEN)
-    u_ma_sbuf (
-        .clk_i      (clk_i              ),
-        .rst_ni     (rst_ni             ),
-        .flush_i    (idu_flush_i        ),
-
-        .insn_i     (ma_sbuf_insn       ),
-        .addr_i     (ma_sbuf_addr       ),
-        .idata1_i   (ma_sbuf_idata1     ),
-        .idata2_i   (ma_sbuf_idata2     ),
-        .rdy_i      (ma_sbuf_rdy        ),
-        .ack_o      (ma_sbuf_ack        ),
-
-        .sbuf_if    (idu_ma_sbuf_if     )
-    );
-
-    /*
-     * PRE-DECODE RESPONSE LOGIC
-     */
-
     always_comb begin
-        ipu_sbuf_if.ack = 1'b1;
-
-        if(ipu_sbuf_if.rdy == 1'b1) begin
-            unique case(ipu_sbuf_if.opcode)
-                LUI:        ipu_sbuf_if.ack = ei_sbuf_rdy == 1'b1 && ei_sbuf_ack == 1'b1;
-                AUIPC:      ipu_sbuf_if.ack = ei_sbuf_rdy == 1'b1 && ei_sbuf_ack == 1'b1;
-                JAL:        ipu_sbuf_if.ack = ei_sbuf_rdy == 1'b1 && ei_sbuf_ack == 1'b1;
-                JALR:       ipu_sbuf_if.ack = ei_sbuf_rdy == 1'b1 && ei_sbuf_ack == 1'b1;
-                BRANCH:     ipu_sbuf_if.ack = ei_sbuf_rdy == 1'b1 && ei_sbuf_ack == 1'b1;
-                LOAD:       ipu_sbuf_if.ack = ma_sbuf_rdy == 1'b1 && ma_sbuf_ack == 1'b1;
-                STORE:      ipu_sbuf_if.ack = ma_sbuf_rdy == 1'b1 && ma_sbuf_ack == 1'b1;
-                OP_IMM:     ipu_sbuf_if.ack = ei_sbuf_rdy == 1'b1 && ei_sbuf_ack == 1'b1;
-                OP:         ipu_sbuf_if.ack = ei_sbuf_rdy == 1'b1 && ei_sbuf_ack == 1'b1;
-            endcase
+        ipu_sbuf_if.ack = idu_sbuf_ack[idx];
+        if(iss == 1'b0) begin
+            ipu_sbuf_if.ack = 1'b0;
         end
-
+        if(ipu_sbuf_if.rdy == 1'b0) begin
+            ipu_sbuf_if.ack = 1'b1;
+        end
     end
 
 endmodule : rv0_idu

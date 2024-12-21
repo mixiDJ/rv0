@@ -37,13 +37,9 @@ module rv0_ifu #(`RV0_CORE_PARAM_LST) (
     // instruction fetch unit flush
     input  logic                        ifu_flush_i,
 
-    // flow control signals
-    input  logic [XLEN-1:0]             ifu_fc_target_i,
-    input  logic                        ifu_fc_trans_i,
-
-    // trap control signals
-    input  logic [XLEN-1:0]             ifu_tc_target_i,
-    input  logic                        ifu_tc_trans_i,
+    // control transfer signals
+    input  logic [XLEN-1:0]             ct_target_i,
+    input  logic                        ct_trans_i,
 
     // pipeline buffer interface
     rv_sbuf_if.source                   ifu_sbuf_if,
@@ -119,7 +115,7 @@ module rv0_ifu #(`RV0_CORE_PARAM_LST) (
             end
         endcase
 
-        if(ifu_fc_trans_i == 1'b1) imem_fsm_state_d = S_IDLE;
+        if(ct_trans_i == 1'b1) imem_fsm_state_d = S_IDLE;
     end
 
     always_ff @(posedge clk_i or negedge rst_ni) begin
@@ -144,8 +140,8 @@ module rv0_ifu #(`RV0_CORE_PARAM_LST) (
             S_PEND_RSP:   pc_d = pc_q;
         endcase
 
-        if(ifu_fc_trans_i == 1'b1) begin
-            pc_d = ifu_fc_target_i;
+        if(ct_trans_i == 1'b1) begin
+            pc_d = ct_target_i;
         end
     end
 

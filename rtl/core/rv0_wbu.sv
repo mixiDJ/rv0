@@ -31,117 +31,160 @@
 
 module rv0_wbu #(`RV0_CORE_PARAM_LST) (
 
-    input  logic                        clk_i,
-    input  logic                        rst_ni,
+    input  logic                    clk_i,
+    input  logic                    rst_ni,
 
-    rv_sbuf_if.sink                     exu_sbuf_if,
-    rv_sbuf_if.sink                     lsu_sbuf_if,
+    // control transfer signals
+    output logic [XLEN-1:0]         ct_target_o,
+    output logic                    ct_trans_o,
 
-    output logic [4:0]                  rfi_waddr_o,
-    output logic [XLEN-1:0]             rfi_wdata_o,
-    output logic                        rfi_we_o,
+    // reorder buffer interface
+    //rv_sbuf_if.sink                 rob_sbuf_if,
 
-    output logic [4:0]                  rff_waddr_o,
-    output logic [XLEN-1:0]             rff_wdata_o,
-    output logic                        rff_we_o
+    // pipeline buffer interfaces
+    rv_sbuf_if.sink                 exu_sbuf_if [0:EXU_CNT-1],
+    rv_sbuf_if.source               wbu_sbuf_if,
+
+    // integer register write-back interface
+    rv_rwb_if.source                rfi_if,
+
+    // floating-point register write-back interface
+    rv_rwb_if.source                rff_if
 
 );
 
-    /*
-     * WRITE-BACK ARBITRATION LOGIC
-     */
+    logic               exu_sbuf_rdy    [0:EXU_CNT-1];
+    logic [XLEN-1:0]    exu_sbuf_addr   [0:EXU_CNT-1];
+    logic [31:0]        exu_sbuf_insn   [0:EXU_CNT-1];
+    logic [XLEN-1:0]    exu_sbuf_idata1 [0:EXU_CNT-1];
+    logic [XLEN-1:0]    exu_sbuf_idata2 [0:EXU_CNT-1];
+    logic [FLEN-1:0]    exu_sbuf_fdata  [0:EXU_CNT-1];
+    logic [TLEN-1:0]    exu_sbuf_tags   [0:EXU_CNT-1];
 
-    typedef enum logic [1:0] {
-        ARBT_EXU,
-        ARBT_LSU
-    } wbu_arbt_e;
-
-    wbu_arbt_e  wbu_arbt;
-
-    always_comb begin
-        wbu_arbt = ARBT_EXU;
-        if(lsu_sbuf_if.rdy == 1'b1) begin
-            wbu_arbt = ARBT_LSU;
-        end
-    end
-
-    always_comb begin
-        rfi_waddr_o = 5'h0;
-        rfi_wdata_o = {XLEN{1'b0}};
-        rff_waddr_o = 5'h0;
-        rff_wdata_o = {FLEN{1'b0}};
-
-        case(wbu_arbt)
-            ARBT_EXU: begin
-                rfi_waddr_o = exu_sbuf_if.rd;
-                rfi_wdata_o = exu_sbuf_if.idata1;
-            end
-            ARBT_LSU: begin
-                rfi_waddr_o = lsu_sbuf_if.rd;
-                rfi_wdata_o = lsu_sbuf_if.idata1;
-            end
-        endcase
-
-    end
-
-    assign exu_sbuf_if.ack = 1'b1; //wbu_arbt == ARBT_EXU;
-    assign lsu_sbuf_if.ack = 1'b1; //wbu_arbt == ARBT_LSU;
+    for(genvar i = 0; i < EXU_CNT; ++i) begin : exu_sbuf_rdy_genblk
+        assign exu_sbuf_rdy[i]    = exu_sbuf_if[i].rdy;
+        assign exu_sbuf_addr[i]   = exu_sbuf_if[i].addr;
+        assign exu_sbuf_insn[i]   = exu_sbuf_if[i].insn;
+        assign exu_sbuf_idata1[i] = exu_sbuf_if[i].idata1;
+        assign exu_sbuf_idata2[i] = exu_sbuf_if[i].idata2;
+        assign exu_sbuf_fdata[i]  = exu_sbuf_if[i].fdata1;
+        assign exu_sbuf_tags[i]   = exu_sbuf_if[i].tags;
+    end // exu_sbuf_rdy_genblk
 
     /*
-     * INSTRUCTION RETIRE ADDRESS LOGIC
+     * EXECUTION UNIT ARBITRATION LOGIC
      */
 
-    logic [XLEN-1:0] iret_addr_d;
-    logic [XLEN-1:0] iret_addr_q;
-    logic [31:0]     iret_insn;
+    parameter int unsigned EXU_ADDR_WIDTH = $clog2(EXU_CNT);
 
-    always_comb begin
-        case(wbu_arbt)
-            ARBT_EXU: begin
-                iret_addr_d = exu_sbuf_if.addr;
-                iret_insn   = exu_sbuf_if.insn;
+    logic [EXU_ADDR_WIDTH-1:0] exu_idx_q;
+    logic [EXU_ADDR_WIDTH-1:0] exu_idx_d;
+
+    if(ZICSR == 1'b1) begin : wbu_reorder_genblk
+
+        // reorder write-back enabled, arbitration is done as so
+        // to keep the original instruction order
+        // this prevents imprecise exceptions
+
+    end // wbu_reorder_genblk
+    if(ZICSR == 1'b0) begin : wbu_reorder_n_genblk
+
+        // reorder write-back disabled, arbitration is done as standard round-robin
+
+        always_comb begin
+            exu_idx_d = exu_idx_q;
+            for(int i = exu_idx_q; i >= 0; --i) begin
+                if(exu_sbuf_rdy[i] == 1'b1) exu_idx_d = i;
             end
-            ARBT_LSU: begin
-                iret_addr_d = lsu_sbuf_if.addr;
-                iret_insn   = lsu_sbuf_if.insn;
+            for(int i = {EXU_ADDR_WIDTH{1'b1}}; i > exu_idx_q; --i) begin
+                if(exu_sbuf_rdy[i] == 1'b1) exu_idx_d = i;
             end
-        endcase
-    end
-
-    always_ff @(posedge clk_i or negedge rst_ni) begin
-        if(rst_ni == 1'b0) iret_addr_q <= {XLEN{1'b1}};
-        else iret_addr_q <= iret_addr_d;
-    end
-
-    /*
-     * REGISTER WRITE-BACK DATA LOGIC
-     */
-
-    always_comb begin
-        rfi_we_o = 1'b0;
-        rff_we_o = 1'b0;
-
-        case(iret_insn[6:0])
-            LUI:        rfi_we_o = 1'b1;
-            AUIPC:      rfi_we_o = 1'b1;
-            JAL:        rfi_we_o = 1'b1;
-            JALR:       rfi_we_o = 1'b1;
-            BRANCH:     rfi_we_o = 1'b0;
-            LOAD:       rfi_we_o = 1'b1;
-            STORE:      rfi_we_o = 1'b0;
-            OP_IMM:     rfi_we_o = 1'b1;
-            OP:         rfi_we_o = 1'b1;
-            OP_IMM_32:  rfi_we_o = 1'b1;
-            OP_32:      rfi_we_o = 1'b1;
-        endcase
-
-        if(iret_addr_d == iret_addr_q) begin
-            rfi_we_o = 1'b0;
-            rff_we_o = 1'b0;
         end
 
-        if(rfi_waddr_o == 5'h0) rfi_we_o = 1'b0;
-        if(rff_waddr_o == 5'h0) rff_we_o = 1'b0;
+        always_ff @(posedge clk_i or negedge rst_ni) begin
+            if(rst_ni == 1'b0) exu_idx_q <= 'h0;
+            else exu_idx_q <= exu_idx_d;
+        end
+
+        for(genvar i = 0; i < EXU_CNT; ++i) begin
+            always_comb begin
+                exu_sbuf_if[i].ack = 1'b0;
+                if(exu_sbuf_if[i].rdy == 1'b0) begin
+                    exu_sbuf_if[i].ack = 1'b1;
+                end
+                if(exu_sbuf_if[i].rdy == 1'b1 && i == exu_idx_q) begin
+                    exu_sbuf_if[i].ack = 1'b1;
+                end
+            end
+        end
+
+    end // wbu_reorder_n_genblk
+
+    always_comb begin
+        wbu_sbuf_if.addr   = exu_sbuf_addr[exu_idx_q];
+        wbu_sbuf_if.insn   = exu_sbuf_insn[exu_idx_q];
+        wbu_sbuf_if.idata1 = exu_sbuf_idata1[exu_idx_q];
+        wbu_sbuf_if.idata2 = exu_sbuf_idata2[exu_idx_q];
+        wbu_sbuf_if.fdata1 = exu_sbuf_fdata[exu_idx_q];
+        wbu_sbuf_if.tags   = exu_sbuf_tags[exu_idx_q];
+        wbu_sbuf_if.rdy    = exu_sbuf_rdy[exu_idx_q];
     end
+
+    /*
+     * INTEGER REGISTER WRITE-BACK LOGIC
+     */
+
+    always_comb begin
+        rfi_if.we = 1'b0;
+        case(wbu_sbuf_if.opcode)
+            LUI:        rfi_if.we = 1'b1;
+            AUIPC:      rfi_if.we = 1'b1;
+            JAL:        rfi_if.we = 1'b1;
+            JALR:       rfi_if.we = 1'b1;
+            LOAD:       rfi_if.we = 1'b1;
+            OP_IMM:     rfi_if.we = 1'b1;
+            OP:         rfi_if.we = 1'b1;
+            OP_IMM_32:  rfi_if.we = 1'b1;
+            OP_32:      rfi_if.we = 1'b1;
+            default:    rfi_if.we = 1'b0;
+        endcase
+        if(wbu_sbuf_if.rdy == 1'b0) rfi_if.we = 1'b0;
+    end
+
+    assign rfi_if.waddr = wbu_sbuf_if.rd;
+    assign rfi_if.wdata = wbu_sbuf_if.idata1;
+
+    /*
+     * FLOATING-POINT REGISTER WRITE-BACK LOGIC
+     */
+
+    always_comb begin
+        rff_if.we = 1'b0;
+        case(wbu_sbuf_if.opcode)
+            LOAD_FP:    rff_if.we = 1'b1;
+            OP_FP:      rff_if.we = 1'b1;
+            default:    rff_if.we = 1'b0;
+        endcase
+        if(wbu_sbuf_if.rdy == 1'b0) rff_if.we = 1'b0;
+    end
+
+    assign rff_if.waddr = wbu_sbuf_if.rd;
+    assign rff_if.wdata = wbu_sbuf_if.fdata1;
+
+    /*
+     * CONTROL TRANSFER LOGIC
+     */
+
+    always_comb begin
+        ct_trans_o = 1'b0;
+        case(wbu_sbuf_if.opcode)
+            JAL:    ct_trans_o = 1'b1;
+            JALR:   ct_trans_o = 1'b1;
+            BRANCH: ct_trans_o = ^wbu_sbuf_if.tags[1:0];
+        endcase
+        if(wbu_sbuf_if.rdy == 1'b0) ct_trans_o = 1'b0;
+    end
+
+    assign ct_target_o = wbu_sbuf_if.idata2;
 
 endmodule : rv0_wbu

@@ -52,6 +52,15 @@ import rv_layering_ahb_uvc_pkg::*;
 `include "rv0_core_pkg.sv"
 import rv0_core_pkg::*;
 
+import rv0_core_defs::exu_type_e;
+import rv0_core_defs::EXU_I;
+import rv0_core_defs::EXU_B;
+import rv0_core_defs::EXU_IB;
+import rv0_core_defs::EXU_M;
+import rv0_core_defs::EXU_F;
+import rv0_core_defs::LSU;
+import rv0_core_defs::CSU;
+
 `include "test_rv0_core_base.sv"
 
 `include "test_rv0_core_insn_base.sv"

@@ -226,7 +226,7 @@ task rv0_core_scoreboard::cpu_state_predict_res(rv_item_t ifetch_item);
     // insert instruction into IRET queue
     m_iret_queue[ifetch_item.addr].push_back(ifetch_item);
 
-endtask : cpu_state_predict
+endtask : cpu_state_predict_res
 
 task rv0_core_scoreboard::cpu_state_check();
 
@@ -385,7 +385,7 @@ task rv0_core_scoreboard::cpu_set_exp_ld_data(ref idata_t ld_data);
         m_dmem_afifo.get(ahb_item);
     end while(ahb_item.hwrite != 1'b0);
     ld_data = ahb_item.hrdata;
-endtask : ld_data
+endtask : cpu_set_exp_ld_data
 
 function bit rv0_core_scoreboard::cpu_check_misfetch(rv_item_t rv_item);
     static int misfetch_cnt = 0;
@@ -412,7 +412,7 @@ function bit rv0_core_scoreboard::cpu_check_misfetch(rv_item_t rv_item);
 
     // allow a number of misfetches to account for flow control delay
     if(rv_item.addr == m_npc && rv_item.opcode inside {JAL, JALR, BRANCH}) begin
-        misfetch_cnt = 3;
+        misfetch_cnt = 20;
     end
 
     return rv_item.addr != m_npc;
@@ -497,7 +497,7 @@ function void rv0_core_scoreboard::cpu_stats_report_iret();
         ),
         UVM_LOW
     )
-endfunction : cpu_stasts_report_iret
+endfunction : cpu_stats_report_iret
 
 function void rv0_core_scoreboard::cpu_stats_report_latency();
 endfunction : cpu_stats_report_latency

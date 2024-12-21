@@ -49,7 +49,7 @@ COV_TOOL        = imc
 REGR_TOOL       = vmanager
 VSIF_NAME       = rv0_core_rv32i
 SERVER          = vbox
-PORT            = 50000
+PORT            = 8080
 
 SIM_TOOL        = xrun
 TOP_FILE        = $(PROJECT_DIR)/tb/$(TOP_TB_NAME).sv

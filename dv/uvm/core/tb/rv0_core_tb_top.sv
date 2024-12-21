@@ -32,8 +32,6 @@
 `ifndef RV0_CORE_TB_TOP_SV
 `define RV0_CORE_TB_TOP_SV
 
-`include "rv0_core_defs.svh"
-
 module rv0_core_tb_top;
 
     `include "uvm_macros.svh"
@@ -58,46 +56,57 @@ module rv0_core_tb_top;
     `include "rv0_core_test_pkg.sv"
     import rv0_core_test_pkg::*;
 
+    import rv0_core_defs::exu_type_e;
+    import rv0_core_defs::EXU_I;
+    import rv0_core_defs::EXU_B;
+    import rv0_core_defs::EXU_IB;
+    import rv0_core_defs::EXU_M;
+    import rv0_core_defs::EXU_F;
+    import rv0_core_defs::LSU;
+    import rv0_core_defs::CSU;
+
     /* ISA PARAMETERS */
-    localparam int unsigned     XLEN            = 32;
-    localparam int unsigned     FLEN            = 32;
-    localparam bit              RVA             = 1'b0;
-    localparam bit              RVC             = 1'b0;
-    localparam bit              RVD             = 1'b0;
-    localparam bit              RVE             = 1'b0;
-    localparam bit              RVF             = 1'b0;
-    localparam bit              RVI             = 1'b1;
-    localparam bit              RVM             = 1'b0;
-    localparam bit              RVS             = 1'b0;
-    localparam bit              RVU             = 1'b0;
-    localparam bit              ZIFENCEI        = 1'b0;
-    localparam bit              ZICSR           = 1'b0;
-    localparam bit              ZICNTR          = 1'b0;
-    localparam bit              ZICOND          = 1'b0;
+    localparam int unsigned     XLEN                    = 32;
+    localparam int unsigned     FLEN                    = 32;
+    localparam bit              RVA                     = 1'b0;
+    localparam bit              RVC                     = 1'b0;
+    localparam bit              RVD                     = 1'b0;
+    localparam bit              RVE                     = 1'b0;
+    localparam bit              RVF                     = 1'b0;
+    localparam bit              RVI                     = 1'b1;
+    localparam bit              RVM                     = 1'b0;
+    localparam bit              RVS                     = 1'b0;
+    localparam bit              RVU                     = 1'b0;
+    localparam bit              ZIFENCEI                = 1'b0;
+    localparam bit              ZICSR                   = 1'b0;
+    localparam bit              ZICNTR                  = 1'b0;
+    localparam bit              ZICOND                  = 1'b0;
 
     /* CORE PARAMETERS */
-    localparam bit [XLEN-1:0]   PC_RST_VAL      = 'h0010_0000;
-    localparam bit [XLEN-1:0]   VENDOR_ID       = 'h0;
-    localparam bit [XLEN-1:0]   ARCH_ID         = 'h0;
-    localparam bit [XLEN-1:0]   IMP_ID          = 'h0;
-    localparam bit [XLEN-1:0]   HART_ID         = 'h0;
-    localparam bit [XLEN-1:0]   ROB_ENA         = 1'b0;
-    localparam bit [XLEN-1:0]   MMU_ENA         = 1'b0;
-    localparam bit [XLEN-1:0]   PMP_ENA         = 1'b0;
+    localparam bit [XLEN-1:0]   PC_RST_VAL              = 'h0010_0000;
+    localparam bit [XLEN-1:0]   VENDOR_ID               = 'h0;
+    localparam bit [XLEN-1:0]   ARCH_ID                 = 'h0;
+    localparam bit [XLEN-1:0]   IMP_ID                  = 'h0;
+    localparam bit [XLEN-1:0]   HART_ID                 = 'h0;
+    localparam bit [XLEN-1:0]   ROB_ENA                 = 1'b0;
+    localparam bit [XLEN-1:0]   MMU_ENA                 = 1'b0;
+    localparam bit [XLEN-1:0]   PMP_ENA                 = 1'b0;
+    localparam int unsigned     EXU_CNT                 = 3;
+    localparam exu_type_e       EXU_TYPE [0:EXU_CNT-1]  = {EXU_I, EXU_IB, LSU};
 
     /* AHB INTERFACE PARAMETERS */
-    localparam int unsigned     ADDR_WIDTH      = 32;
-    localparam int unsigned     DATA_WIDTH      = 32;
-    localparam int unsigned     HBURST_WIDTH    = 4;
-    localparam int unsigned     HPROT_WIDTH     = 4;
-    localparam int unsigned     HMASTER_WIDTH   = 1;
-    localparam int unsigned     USER_REQ_WIDTH  = 1;
-    localparam int unsigned     USER_DATA_WIDTH = 1;
-    localparam int unsigned     USER_RESP_WIDTH = 1;
+    localparam int unsigned     ADDR_WIDTH              = XLEN;
+    localparam int unsigned     DATA_WIDTH              = XLEN;
+    localparam int unsigned     HBURST_WIDTH            = 4;
+    localparam int unsigned     HPROT_WIDTH             = 4;
+    localparam int unsigned     HMASTER_WIDTH           = 1;
+    localparam int unsigned     USER_REQ_WIDTH          = 1;
+    localparam int unsigned     USER_DATA_WIDTH         = 1;
+    localparam int unsigned     USER_RESP_WIDTH         = 1;
 
     /* RISC-V LAYERING UVC PARAMETERS */
-    localparam type             IF_ITEM_T       = ahb_uvc_item#(`AHB_UVC_PARAMS);
-    localparam type             IF_SEQR_T       = ahb_uvc_sequencer#(`AHB_UVC_PARAMS);
+    localparam type             IF_ITEM_T               = ahb_uvc_item#(`AHB_UVC_PARAMS);
+    localparam type             IF_SEQR_T               = ahb_uvc_sequencer#(`AHB_UVC_PARAMS);
 
     /* INTERFACES */
     clk_uvc_if u_clk_if ();
@@ -106,32 +115,10 @@ module rv0_core_tb_top;
     ahb_uvc_if#(`AHB_UVC_PARAMS) u_dmem_if (u_clk_if.clk, u_clk_if.rst_n);
 
     rv_iret_uvc_if#(`RV_IRET_UVC_PARAMS) u_iret_if (u_clk_if.clk, u_clk_if.rst_n);
-    //assign u_iret_if.addr = DUT.exu_sbuf_if.addr;
-    //assign u_iret_if.insn = DUT.exu_sbuf_if.insn;
-    //assign u_iret_if.ires = DUT.exu_sbuf_if.idata1;
-    //assign u_iret_if.iret = DUT.exu_sbuf_if.rdy && DUT.exu_sbuf_if.ack;
-
-    typedef enum logic [1:0] {
-        ARBT_EXU,
-        ARBT_LSU
-    } wbu_arbt_e;
-
-    always_comb begin
-        case(DUT.u_wbu.wbu_arbt)
-            ARBT_EXU: begin
-                u_iret_if.addr = DUT.exu_sbuf_if.addr;
-                u_iret_if.insn = DUT.exu_sbuf_if.insn;
-                u_iret_if.ires = DUT.exu_sbuf_if.idata1;
-                u_iret_if.iret = DUT.exu_sbuf_if.rdy && DUT.exu_sbuf_if.ack;
-            end
-            ARBT_LSU: begin
-                u_iret_if.addr = DUT.lsu_sbuf_if.addr;
-                u_iret_if.insn = DUT.lsu_sbuf_if.insn;
-                u_iret_if.ires = DUT.lsu_sbuf_if.idata1;
-                u_iret_if.iret = DUT.lsu_sbuf_if.rdy && DUT.lsu_sbuf_if.ack;
-            end
-        endcase
-    end
+    assign u_iret_if.addr = DUT.wbu_sbuf_if.addr;
+    assign u_iret_if.insn = DUT.wbu_sbuf_if.insn;
+    assign u_iret_if.ires = DUT.wbu_sbuf_if.idata1;
+    assign u_iret_if.iret = DUT.wbu_sbuf_if.rdy;
 
     /* DUT WRAPPER INTERFACES */
     ahb_if#(`AHB_UVC_PARAMS) imem_if ();

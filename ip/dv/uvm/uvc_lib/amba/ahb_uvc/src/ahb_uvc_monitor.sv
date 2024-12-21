@@ -127,8 +127,6 @@ task ahb_uvc_monitor::bus_collector();
         ahb_item.hauser    = m_vif.hauser;
         ahb_item.hwuser    = m_vif.hwuser;
 
-        `uvm_info(`gtn, "REQ ACK", UVM_LOW)
-
         // collect write data
         @(posedge m_vif.hclk);
         ahb_item.hwdata = m_vif.hwdata;
@@ -138,8 +136,6 @@ task ahb_uvc_monitor::bus_collector();
 
         // wait for response
         while(m_vif.hreadyout == 1'b0) @(posedge m_vif.hclk);
-
-        `uvm_info(`gtn, "RSP", UVM_LOW)
 
         // collect response data
         ahb_item.hrdata  = m_vif.hrdata;
@@ -168,6 +164,6 @@ function bit ahb_uvc_monitor::check_bus_req_valid();
     if(m_vif.htrans == HTRANS_BUSY) return 0;
     if(m_vif.hreadyout == 1'b0) return 0;
     return 1;
-endfunction : check_req_valid
+endfunction : check_bus_req_valid
 
 `endif // AHB_UVC_MONITOR_SV

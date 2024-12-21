@@ -102,6 +102,7 @@ module rv0_csr #(`RV0_CORE_PARAM_LST) (
         CSR_ADDR_DPC            = 12'h7b1,
         CSR_ADDR_DSCRATCH0      = 12'h7b2,
         CSR_ADDR_DSCRATCH1      = 12'h7b3
+
     } csr_addr_e;
 
 
