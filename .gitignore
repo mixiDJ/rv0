@@ -1,0 +1,8 @@
+*.log
+*.lock
+**/*history*
+**/xcelium.d
+**/.simvision
+**/waves.shm
+*.err
+xrun.key
