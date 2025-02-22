@@ -114,8 +114,34 @@ typedef enum logic [2:0] {
 
 typedef enum logic [6:0] {
     MULDIV = 7'b0000001,
-    CZERO  = 7'b0000111
+    CZERO  = 7'b0000111,
+    FUNCT7_FADD_S  = 7'b0000000,  // FADD.S
+    FUNCT7_FSUB_S  = 7'b0000100,  // FSUB.S
+    FUNCT7_FMUL_S  = 7'b0001000,  // FMUL.S
+    FUNCT7_FDIV_S  = 7'b0001100,  // FDIV.S
+    FUNCT7_FSQRT_S = 7'b0101100,  // FSQRT.S
+    FUNCT7_FSGNJ_S = 7'b0010000,  // FSGNJ.S
+    FUNCT7_FMIN_FMAX_S  = 7'b0010100,  // FMIN.S
+    FUNCT7_FCVT_W_S  = 7'b1100000, // FCVT.W.S
+    FUNCT7_FCLASS_S  = 7'b1110000  // FCLASS.S
 } rv_funct7_e;
+
+typedef enum logic [2:0] { 
+    RNE = 3'b000, // Round to nearest, ties to even
+    RTZ = 3'b001, // Round to zero
+    RDN = 3'b010, // Round down
+    RUP = 3'b011, // Round up
+    RMM = 3'b100, // Round to nearest, ties to max magnitude
+    DYN = 3'b111 // Dynamic mode rounding, looks to fcsr for rounding mode
+ } rv_float_rounding_mode;
+
+ typedef enum logic [2:0] { 
+    FMIN = 3'b000,
+    FMAX = 3'b001
+ } rv_float_min_max_field;
+
+// FLOATING POINT NaN value per IEEE 754
+parameter NaN = 32'h7fc00000;
 
 /*
  * EXECUTION UNIT ENUM

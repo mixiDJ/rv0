@@ -6,6 +6,7 @@ $(BASE_DIR)/rtl/core/rv0_core_defs.sv
 $(BASE_DIR)/rtl/core/rv0_core_ifs.sv
 
 $(BASE_DIR)/rtl/core/rv0_alu_i.sv
+$(BASE_DIR)/rtl/core/rv0_alu_f.sv
 $(BASE_DIR)/rtl/core/rv0_alu_b.sv
 $(BASE_DIR)/rtl/core/rv0_core.sv
 
