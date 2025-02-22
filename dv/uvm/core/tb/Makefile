@@ -31,8 +31,7 @@
 
 PROJECT_NAME    = rv0_core
 
-#BASE_DIR        = $(HOME)/Projects/rv0
-BASE_DIR 	= /media/sf_rv0-master
+BASE_DIR        = $(HOME)/Projects/rv0
 PROJECT_DIR     = $(BASE_DIR)/dv/uvm/core
 WORK_DIR        = $(BASE_DIR)/work/core
 IP_DIR          = $(BASE_DIR)/ip
